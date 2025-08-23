@@ -1,13 +1,13 @@
 package semulator;
 
-import semulator.logic.execution.ProgramExecutorImpl;
-import semulator.logic.instruction.*;
-import semulator.logic.label.LabelImpl;
-import semulator.logic.program.Program;
-import semulator.logic.program.ProgramImpl;
-import semulator.logic.variable.Variable;
-import semulator.logic.variable.VariableImpl;
-import semulator.logic.variable.VariableType;
+import semulator.engine.logic.execution.ProgramExecutorImpl;
+import semulator.engine.logic.instruction.*;
+import semulator.engine.logic.label.LabelImpl;
+import semulator.engine.logic.program.Program;
+import semulator.engine.logic.program.ProgramImpl;
+import semulator.engine.logic.variable.Variable;
+import semulator.engine.logic.variable.VariableImpl;
+import semulator.engine.logic.variable.VariableType;
 
 public class Main {
 

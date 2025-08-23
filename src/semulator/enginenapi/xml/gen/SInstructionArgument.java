@@ -1,4 +1,4 @@
-package semulator.xml;
+package semulator.enginenapi.xml.gen;
 
 import jakarta.xml.bind.annotation.*;
 

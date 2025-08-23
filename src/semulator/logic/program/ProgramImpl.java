@@ -1,18 +1,17 @@
 package semulator.logic.program;
 
 import semulator.logic.instruction.SInstruction;
-import semulator.logic.label.FixedLabel;
 import semulator.logic.label.Label;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class SProgramImpl implements SProgram{
+public class ProgramImpl implements Program {
 
     private final String name;
     private final List<SInstruction> instructions;
 
-    public SProgramImpl(String name) {
+    public ProgramImpl(String name) {
         this.name = name;
         instructions = new ArrayList<>();
     }

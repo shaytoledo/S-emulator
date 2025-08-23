@@ -3,8 +3,8 @@ package semulator;
 import semulator.logic.execution.ProgramExecutorImpl;
 import semulator.logic.instruction.*;
 import semulator.logic.label.LabelImpl;
-import semulator.logic.program.SProgram;
-import semulator.logic.program.SProgramImpl;
+import semulator.logic.program.Program;
+import semulator.logic.program.ProgramImpl;
 import semulator.logic.variable.Variable;
 import semulator.logic.variable.VariableImpl;
 import semulator.logic.variable.VariableType;
@@ -29,7 +29,7 @@ public class Main {
         Variable x1 = new VariableImpl(VariableType.INPUT, 1);
         LabelImpl l1 = new LabelImpl(1);
 
-        SProgram p = new SProgramImpl("SANITY");
+        Program p = new ProgramImpl("SANITY");
         p.addInstruction(new DecreaseInstruction(x1, l1));
         p.addInstruction(new IncreaseInstruction(Variable.RESULT));
         p.addInstruction(new JumpNotZeroInstruction(x1, l1));

@@ -3,16 +3,16 @@ package semulator.logic.execution;
 import semulator.logic.instruction.SInstruction;
 import semulator.logic.label.FixedLabel;
 import semulator.logic.label.Label;
-import semulator.logic.program.SProgram;
+import semulator.logic.program.Program;
 import semulator.logic.variable.Variable;
 
 import java.util.Map;
 
 public class ProgramExecutorImpl implements ProgramExecutor{
 
-    private final SProgram program;
+    private final Program program;
 
-    public ProgramExecutorImpl(SProgram program) {
+    public ProgramExecutorImpl(Program program) {
         this.program = program;
     }
 

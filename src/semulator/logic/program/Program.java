@@ -5,7 +5,7 @@ import semulator.logic.label.Label;
 
 import java.util.List;
 
-public interface SProgram {
+public interface Program {
 
     String getName();
     void addInstruction(SInstruction instruction);

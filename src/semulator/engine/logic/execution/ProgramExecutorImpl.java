@@ -1,6 +1,6 @@
 package semulator.engine.logic.execution;
 
-import semulator.engine.logic.instruction.SInstruction;
+import semulator.engine.logic.instruction.Instruction;
 import semulator.engine.logic.label.FixedLabel;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.program.Program;
@@ -21,7 +21,7 @@ public class ProgramExecutorImpl implements ProgramExecutor{
 
         ExecutionContext context = new EexecutionContextImpl(inputs); // create the context with inputs.
 
-        SInstruction currentInstruction = program.getInstructions().get(0);
+        Instruction currentInstruction = program.getInstructions().get(0);
         Label nextLabel;
         do {
             nextLabel = currentInstruction.execute(context);

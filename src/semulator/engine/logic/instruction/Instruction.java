@@ -4,7 +4,7 @@ import semulator.engine.logic.execution.ExecutionContext;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.variable.Variable;
 
-public interface SInstruction {
+public interface Instruction {
 
     String getName();
     Label execute(ExecutionContext context);

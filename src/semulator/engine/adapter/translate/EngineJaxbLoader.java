@@ -1,0 +1,15 @@
+package semulator.engine.adapter.translate;
+
+import jakarta.xml.bind.JAXBContext;
+import semulator.engine.adapter.xml.gen.SProgram;
+
+import java.nio.file.Path;
+
+// Loader for SProgram XML files using JAXB
+public class EngineJaxbLoader {
+
+    public static SProgram load(Path xmlPath) throws Exception {
+        JAXBContext jaxbContext = JAXBContext.newInstance(SProgram.class);
+        return (SProgram) jaxbContext.createUnmarshaller().unmarshal(xmlPath.toFile());
+    }
+}

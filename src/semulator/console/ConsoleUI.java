@@ -9,7 +9,7 @@ import java.util.Scanner;
 
 public class ConsoleUI {
 
-    ProgramExecutorImpl executor;
+    //ProgramExecutorImpl executor;
     private static final Scanner in = new Scanner(System.in);
     private static final Engine engine = new EngineImpl();
 

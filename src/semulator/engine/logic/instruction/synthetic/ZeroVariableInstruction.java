@@ -1,11 +1,13 @@
-package semulator.engine.logic.instruction;
+package semulator.engine.logic.instruction.synthetic;
 
 import semulator.engine.logic.execution.ExecutionContext;
+import semulator.engine.logic.instruction.AbstractInstruction;
+import semulator.engine.logic.instruction.InstructionData;
 import semulator.engine.logic.label.FixedLabel;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.variable.Variable;
 
-public class ZeroVariableInstruction extends AbstractInstruction{
+public class ZeroVariableInstruction extends AbstractInstruction {
 
 public ZeroVariableInstruction(Variable variable) {
     super(InstructionData.ZERO_VARIABLE, variable);

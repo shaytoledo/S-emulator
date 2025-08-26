@@ -1,11 +1,12 @@
 package semulator.engine.logic.program;
 
 import semulator.engine.logic.instruction.Instruction;
-import semulator.engine.logic.label.FixedLabel;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.variable.Variable;
 
 import java.util.*;
+
+import static java.util.Comparator.comparingInt;
 
 public class ProgramImpl implements Program {
 
@@ -98,7 +99,7 @@ public class ProgramImpl implements Program {
         }
 
         public Builder withExitLabel(Label exitLabel) {
-            this.exitLabel = FixedLabel.EXIT;
+            this.exitLabel = exitLabel;
             return this;
         }
 
@@ -152,9 +153,7 @@ public class ProgramImpl implements Program {
     }
 
     @Override
-    public void addInstruction(Instruction instruction) {
-
-    }
+    public void addInstruction(Instruction instruction) { instructions.add(instruction); }
 
     @Override
     public List<Instruction> getInstructions() {
@@ -176,13 +175,12 @@ public class ProgramImpl implements Program {
         return variables;
     }
 
-    public Variable getVariableByName(String name) {
-        return variables.stream()
-                .filter(v -> v.getRepresentation().equals(name))
-                .findFirst()
-                .orElse(null);
+    @Override
+    public int calculateCycles() {
+        return instructions.stream()
+                .mapToInt(Instruction::cycles)
+                .sum();
     }
-
 
     @Override
     public Instruction getNextInstructionLabel(Instruction currentInstruction) {
@@ -198,13 +196,120 @@ public class ProgramImpl implements Program {
     @Override
     public Instruction getInstructionByLabel(Label nextLabel) {
         for (Instruction instruction : instructions) {
-            if (instruction.getLabel().equals(nextLabel)) {
-                return instruction;
+            if(instruction.getLabel() != null) {
+                if (instruction.getLabel().equals(nextLabel)) {
+                    return instruction;
+                }
             }
+
         }
         //It always finds the instruction by label because in load program it checks the label jumps
         return null; // or throw an exception if label not found
 
+    }
+
+
+
+
+
+    @Override
+    public List<String> getVariablesPeek() {
+
+        Set<String> acc = new LinkedHashSet<>();
+
+        for (Instruction instr : instructions) {
+            Variable v = instr.getVariable();
+            addIfX(acc, v != null ? v.getRepresentation() : null);
+
+            Map<String, String> args = instr.args(); // ← לפי מה שכתבת: מתודה בשם args()
+            if (args != null && !args.isEmpty()) {
+                for (String val : args.values()) {
+                    addIfX(acc, val);
+                }
+            }
+        }
+
+        List<String> result = new ArrayList<>(acc);
+        result.replaceAll(s -> s == null ? null : s.trim().toLowerCase());
+        result.removeIf(Objects::isNull);
+        result.sort(comparingInt(this::safeTrailingNumber));
+        return result;
+    }
+
+    private void addIfX(java.util.Set<String> acc, String candidate) {
+        if (candidate == null) return;
+        String s = candidate.trim();
+        if (s.isEmpty()) return;
+
+        char c0 = s.charAt(0);
+        if (c0 == 'x' || c0 == 'X') {
+            for (int i = 1; i < s.length(); i++) {
+                if (!Character.isDigit(s.charAt(i))) return; // לא מספרי → דילוג
+            }
+            acc.add(s.toLowerCase());
+        }
+    }
+
+    private int safeTrailingNumber(String name) {
+        if (name == null || name.length() < 2) return Integer.MAX_VALUE;
+        try {
+            return Integer.parseInt(name.substring(1));
+        } catch (NumberFormatException e) {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    @Override
+    public List<String> getLabelsPeek() {
+        return labels.stream()
+                .map(Label::getLabelRepresentation)
+                .filter(Objects::nonNull)
+                .map(String::toUpperCase)
+                .distinct()
+                .sorted((a, b) -> {
+                    if (a.equals("EXIT")) return 1; // EXIT in the end
+                    if (b.equals("EXIT")) return -1;
+                    try {
+                        return Integer.compare(
+                                Integer.parseInt(a.substring(1)),
+                                Integer.parseInt(b.substring(1))
+                        );
+                    } catch (NumberFormatException e) {
+                        return a.compareTo(b);
+                    }
+                })
+                .toList();
+    }
+
+    @Override
+    public List<String> getInstructionsPeek() {
+        List<String> lines = new ArrayList<>(instructions.size());
+
+        for (int i = 0; i < instructions.size(); i++) {
+            Instruction inst = instructions.get(i);
+
+            int number = i + 1;
+
+            String type = inst.isBasic() ? "B" : "S";
+
+            String lbl = (inst.getLabel() != null && inst.getLabel().getLabelRepresentation() != null)
+                    ? inst.getLabel().getLabelRepresentation()
+                    : "";
+            String labelFormatted = String.format("[%1$-5s]", lbl);
+
+
+            String command = inst.toDisplayString();
+
+            command = command
+                    .replaceAll("\\bX(\\d+)\\b", "x$1")
+                    .replaceAll("\\bY\\b", "y");
+
+            int cycles = inst.cycles();
+
+            String line = String.format("#%d (%s) %s %s (%d)", number, type, labelFormatted, command, cycles);
+            lines.add(line);
+        }
+        return lines;
     }
 
 
@@ -222,11 +327,16 @@ public class ProgramImpl implements Program {
         return 0;
     }
 
-    @Override
-    public int calculateCycles() {
-        return instructions.stream()
-                .mapToInt(Instruction::cycles)
-                .sum();
+
+
+
+
+    public Variable getVariableByName(String name) {
+        return variables.stream()
+                .filter(v -> v.getRepresentation().equals(name))
+                .findFirst()
+                .orElse(null);
     }
+
 
 }

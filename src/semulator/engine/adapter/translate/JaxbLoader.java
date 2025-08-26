@@ -6,7 +6,7 @@ import semulator.engine.adapter.xml.gen.SProgram;
 import java.nio.file.Path;
 
 // Loader for SProgram XML files using JAXB
-public class EngineJaxbLoader {
+public class JaxbLoader {
 
     public static SProgram load(Path xmlPath) throws Exception {
         JAXBContext jaxbContext = JAXBContext.newInstance(SProgram.class);

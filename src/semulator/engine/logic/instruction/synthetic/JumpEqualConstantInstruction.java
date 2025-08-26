@@ -7,27 +7,37 @@ import semulator.engine.logic.label.FixedLabel;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.variable.Variable;
 
+import java.util.Map;
+
 public class JumpEqualConstantInstruction extends AbstractInstruction {
 
-    Long constant;
-    Label jnzLabel;
+    private final Label target;
+    private final long constant;
 
-    public JumpEqualConstantInstruction(Variable variable, Label jnzLabel, Long constant) {
-        this(variable,jnzLabel, constant, FixedLabel.EMPTY);
-    }
-
-    public JumpEqualConstantInstruction(Variable variable, Label jnzLabel, Long constant, Label label) {
-        super(InstructionData.JUMP_EQUAL_CONSTANT, variable, label);
+    public JumpEqualConstantInstruction(Variable var, Label target, long constant, Map<String,String> argsMap) {
+        super(InstructionData.JUMP_EQUAL_CONSTANT, var, argsMap);
+        this.target = target;
         this.constant = constant;
-        this.jnzLabel = jnzLabel;
-
     }
+
+    public JumpEqualConstantInstruction(Variable var, Label target, long constant, Label lineLabel, Map<String,String> argsMap) {
+        super(InstructionData.JUMP_EQUAL_CONSTANT, var, lineLabel, argsMap);
+        this.target = target;
+        this.constant = constant;
+    }
+
 
     @Override
     public Label execute(ExecutionContext context) {
         if (context.getVariableValue(getVariable()) == constant) {;
-            return jnzLabel;
+            return target;
         }
         return FixedLabel.EMPTY;
+    }
+
+
+    @Override
+    public String toDisplayString() {
+        return "JE " + getVariable().getRepresentation() + " == " + argsMap.getOrDefault("constantValue","?") +" -> " + argsMap.getOrDefault("JEConstantLabel","?");
     }
 }

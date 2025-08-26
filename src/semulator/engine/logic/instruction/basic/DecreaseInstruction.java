@@ -7,15 +7,20 @@ import semulator.engine.logic.label.FixedLabel;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.variable.Variable;
 
+import java.util.Map;
+
 public class DecreaseInstruction extends AbstractInstruction {
 
-    public DecreaseInstruction(Variable variable) {
-        super(InstructionData.DECREASE, variable);
+    public DecreaseInstruction(Variable var, Label lineLabel, Map<String,String> argsMap) {
+        super(InstructionData.DECREASE, var, lineLabel, argsMap);
+        basic = true;
     }
 
-    public DecreaseInstruction(Variable variable, Label label) {
-        super(InstructionData.DECREASE, variable, label);
+    public DecreaseInstruction(Variable var, Map<String,String> argsMap) {
+        super(InstructionData.DECREASE, var, argsMap);
+        basic = true;
     }
+
 
     @Override
     public Label execute(ExecutionContext context) {
@@ -25,6 +30,11 @@ public class DecreaseInstruction extends AbstractInstruction {
         context.updateVariable(getVariable(), variableValue);
 
         return FixedLabel.EMPTY;
+    }
+
+    @Override
+    public String toDisplayString() {
+        return getVariable().getRepresentation() + " <- " + getVariable().getRepresentation() + " - 1";
     }
 
 }

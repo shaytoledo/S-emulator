@@ -1,10 +1,4 @@
-package semulator.console;
-
-import semulator.engine.core.Engine;
-import semulator.engine.core.EngineImpl;
-import semulator.engine.core.Engine.ProgramSummary;
-import semulator.engine.core.Engine.RunResult;
-import semulator.engine.logic.exception.NoProgramLoadedException;
+package ui;
 
 import java.nio.file.Path;
 import java.util.*;

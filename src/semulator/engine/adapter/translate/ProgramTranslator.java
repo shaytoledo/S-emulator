@@ -10,6 +10,7 @@ import semulator.engine.logic.instruction.basic.DecreaseInstruction;
 import semulator.engine.logic.instruction.basic.IncreaseInstruction;
 import semulator.engine.logic.instruction.basic.JumpNotZeroInstruction;
 import semulator.engine.logic.instruction.basic.NoOpInstruction;
+import semulator.engine.logic.instruction.synthetic.*;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.label.LabelImpl;
 import semulator.engine.logic.program.Program;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
 
 public final class ProgramTranslator {
 
-        private ProgramTranslator() {}
+    private ProgramTranslator() {}
 
         public static final class Result {
             public final Program program;
@@ -45,6 +46,7 @@ public final class ProgramTranslator {
             Map<String, Label> labelsByName = new LinkedHashMap<>();
             List<Instruction> code = new ArrayList<>();
 
+
             List<SInstruction> sInstructions = Optional.ofNullable(sProgram.getInstructions()).orElse(List.of());
 
             for (int idx = 0; idx < sInstructions.size(); idx++) {
@@ -63,9 +65,10 @@ public final class ProgramTranslator {
                 }
 
 
-                // need to decide what to do what the type
                 String type = safe(si.getType(), "basic");
                 String name = safe(si.getName(), "NEUTRAL");
+
+                //get all the variables from arguments
                 Map<String,String> args = argumentsMap(si.getArguments());
 
                 Instruction instruction = null;
@@ -75,107 +78,193 @@ public final class ProgramTranslator {
                         case "INCREASE" -> {
                             if (variable == null) {
                                 errors.add(errorMessageByLine(idx, "INCREASE missing variable"));
-                                instruction = new NoOpInstruction(newVarStrict("y"));
+                                instruction = new NoOpInstruction(newVarStrict("y1"), lineLabel, nn(args));
                             } else {
-                                instruction = new IncreaseInstruction(variable);
+                                instruction = new IncreaseInstruction(variable, lineLabel, nn(args));
                             }
                         }
                         case "DECREASE" -> {
                             if (variable == null) {
                                 errors.add(errorMessageByLine(idx, "DECREASE missing variable"));
-                                instruction = new NoOpInstruction(newVarStrict("y"));
+                                instruction = new NoOpInstruction(variable, lineLabel, nn(args));
+
                             } else {
-                                instruction = new DecreaseInstruction(variable);
+                                instruction = new DecreaseInstruction(variable,lineLabel, nn(args));
                             }
                         }
                         case "JUMP_NOT_ZERO" -> {
                             if (variable == null) {
                                 errors.add(errorMessageByLine(idx, "JUMP_NOT_ZERO missing variable"));
-                                instruction = new NoOpInstruction(newVarStrict("y"));
+                                instruction = new NoOpInstruction(variable, lineLabel, nn(args));
                             } else {
                                 String targetLabelName = args.getOrDefault("JNZLabel", "");
                                 if (targetLabelName.isBlank()) {
                                     errors.add(errorMessageByLine(idx, "JUMP_NOT_ZERO missing JNZLabel argument"));
-                                    instruction = new NoOpInstruction(variable);
+                                    instruction = new NoOpInstruction(variable, lineLabel, nn(args));
                                 } else {
                                     Label targetLabel;
-                                    if (targetLabelName.equals("EXIT")) {
-                                        targetLabel = labelsByName.computeIfAbsent("EXIT", LabelImpl::new);
-                                    }
-                                    else {
-                                        targetLabel = labelsByName.computeIfAbsent(targetLabelName, LabelImpl::new);
-                                        instruction = new JumpNotZeroInstruction(variable, targetLabel);
-                                    }
+                                    targetLabel = labelsByName.computeIfAbsent(targetLabelName, LabelImpl::new);
+                                    instruction = new JumpNotZeroInstruction(variable, targetLabel,lineLabel, nn(args));
                                 }
                             }
                         }
                         case "NEUTRAL" -> {
-                            instruction = new NoOpInstruction(variable != null ? variable : newVarStrict("y"));
+
+                            instruction = new NoOpInstruction(variable != null ? variable : newVarStrict("y"),lineLabel, nn(args));
                         }
                         default -> {
                             errors.add(errorMessageByLine(idx, "Unknown basic instruction: " + name));
-                            instruction = new NoOpInstruction(variable != null ? variable : newVarStrict("y"));
+                            instruction = new NoOpInstruction(variable != null ? variable : newVarStrict("y"),lineLabel, nn(args));
                         }
                     }
                 } else {
-                    instruction = new SyntheticPlaceholder(name, variable != null ? variable : newVarStrict("y"), args);
+                    // synthetic instructions
+                    switch (name) {
+
+                        case "ASSIGNMENT" -> {
+                            if (variable == null) {
+                                errors.add(errorMessageByLine(idx, "ASSIGNMENT missing target variable"));
+                                instruction = new NoOpInstruction(newVarStrict("y"), lineLabel, nn(args));
+                            } else {
+                                String otherVarName = args.getOrDefault("assignedVariable", "");
+                                if (otherVarName.isBlank()) {
+                                    errors.add(errorMessageByLine(idx, "ASSIGNMENT missing 'assignedVariable'"));
+                                    instruction = new NoOpInstruction(variable, lineLabel, nn(args));
+                                } else {
+                                    try {
+                                        Variable otherVar = varsByName.computeIfAbsent(otherVarName, ProgramTranslator::parseStrictVariable);
+                                        instruction = new AssignmentInstruction(variable, otherVar, lineLabel, nn(args));
+                                    }
+                                    catch (IllegalArgumentException ex) {
+                                        errors.add(errorMessageByLine(idx, "ASSIGNMENT bad 'otherVariable': " + otherVarName));
+                                        instruction = new NoOpInstruction(variable, lineLabel, nn(args));
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        case "CONSTANT_ASSIGNMENT" -> {
+                            if (variable == null) {
+                                errors.add(errorMessageByLine(idx, "CONSTANT_ASSIGNMENT missing target variable"));
+                                instruction = new NoOpInstruction(newVarStrict("y"), lineLabel, nn(args));
+                            } else {
+                                String valStr = args.getOrDefault("constantValue", "");
+                                try {
+                                    long value = Long.parseLong(valStr);
+                                    instruction = new ConstantAssignmentInstruction(variable, value, lineLabel, nn(args));
+                                } catch (NumberFormatException ex) {
+                                    errors.add(errorMessageByLine(idx,
+                                            "CONSTANT_ASSIGNMENT bad 'constantValue': " + valStr));
+                                    instruction = new NoOpInstruction(variable, lineLabel, nn(args));
+                                }
+                            }
+                        }
+
+                        case "ZERO_VARIABLE" -> {
+                            if (variable == null) {
+                                errors.add(errorMessageByLine(idx, "ZERO_VARIABLE missing variable"));
+                                instruction = new NoOpInstruction(newVarStrict("y"), lineLabel, nn(args));
+                            } else {
+                                instruction = new ZeroVariableInstruction(variable, lineLabel, nn(args));
+                            }
+                        }
+
+                        case "GOTO_LABEL" -> {
+                            String toName = args.getOrDefault("gotoLabel", "");
+                            if (toName.isBlank()) {
+                                errors.add(errorMessageByLine(idx, "GOTO_LABEL missing 'gotoLabel'"));
+                                instruction = new NoOpInstruction(variable != null ? variable : newVarStrict("y"), lineLabel, nn(args));
+                            } else {
+                                Label to = labelsByName.computeIfAbsent(toName, LabelImpl::new);
+                                instruction = new GoToInstruction(variable != null ? variable : newVarStrict("y"), to, lineLabel, nn(args));
+                            }
+                        }
+
+                        case "JUMP_ZERO" -> {
+                            if (variable == null) {
+                                errors.add(errorMessageByLine(idx, "JUMP_ZERO missing variable"));
+                                instruction = new NoOpInstruction(newVarStrict("y"), lineLabel, nn(args));
+                            } else {
+                                String targetLabelName = args.getOrDefault("JZLabel", "");
+                                if (targetLabelName.isBlank()) {
+                                    errors.add(errorMessageByLine(idx, "JUMP_ZERO missing 'JZLabel'"));
+                                    instruction = new NoOpInstruction(variable, lineLabel, nn(args));
+                                } else {
+                                    Label target = labelsByName.computeIfAbsent(targetLabelName, LabelImpl::new);
+                                    instruction = new JumpZeroInstruction(variable, target, lineLabel, nn(args));
+                                }
+                            }
+                        }
+
+                        case "JUMP_EQUAL_CONSTANT" -> {
+                            if (variable == null) {
+                                errors.add(errorMessageByLine(idx, "JUMP_EQUAL_CONSTANT missing variable"));
+                                instruction = new NoOpInstruction(newVarStrict("y"), lineLabel, nn(args));
+                            } else {
+                                String targetLabelName = args.getOrDefault("JEConstantLabel", "");
+                                String constStr        = args.getOrDefault("constantValue", "");
+                                if (targetLabelName.isBlank()) {
+                                    errors.add(errorMessageByLine(idx, "JUMP_EQUAL_CONSTANT missing 'JEQLabel'"));
+                                    instruction = new NoOpInstruction(variable, lineLabel, nn(args));
+                                } else {
+                                    try {
+                                        long constant = Long.parseLong(constStr);
+                                        Label target = labelsByName.computeIfAbsent(targetLabelName, LabelImpl::new);
+                                        instruction = new JumpEqualConstantInstruction(variable, target, constant, lineLabel, nn(args));
+                                    } catch (NumberFormatException ex) {
+                                        errors.add(errorMessageByLine(idx,
+                                                "JUMP_EQUAL_CONSTANT bad 'constantValue': " + constStr));
+                                        instruction = new NoOpInstruction(variable, lineLabel, nn(args));
+                                    }
+                                }
+                            }
+                        }
+
+                        case "JUMP_EQUAL_VARIABLE" -> {
+                            if (variable == null) {
+                                errors.add(errorMessageByLine(idx, "JUMP_EQUAL_VARIABLE missing variable"));
+                                instruction = new NoOpInstruction(newVarStrict("y"), lineLabel, nn(args));
+                            } else {
+                                String targetLabelName = args.getOrDefault("JEVariableLabel", "");
+                                String otherVarName    = args.getOrDefault("variableName", "");
+                                if (targetLabelName.isBlank()) {
+                                    errors.add(errorMessageByLine(idx, "JUMP_EQUAL_VARIABLE missing 'JEQLabel'"));
+                                    instruction = new NoOpInstruction(variable, lineLabel, nn(args));
+                                } else if (otherVarName.isBlank()) {
+                                    errors.add(errorMessageByLine(idx, "JUMP_EQUAL_VARIABLE missing 'otherVariable'"));
+                                    instruction = new NoOpInstruction(variable, lineLabel, nn(args));
+                                } else {
+                                    Label target  = labelsByName.computeIfAbsent(targetLabelName, LabelImpl::new);
+                                    try {
+                                        Variable other = varsByName.computeIfAbsent(otherVarName, ProgramTranslator::parseStrictVariable);
+                                        instruction = new JumpEqualVariableInstruction(variable, target, other, lineLabel, nn(args));
+                                    }
+                                    catch (IllegalArgumentException ex) {
+                                        errors.add(errorMessageByLine(idx, "JUMP_EQUAL_VARIABLE bad 'otherVariable': " + otherVarName));
+                                        instruction = new NoOpInstruction(variable, lineLabel, nn(args));
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        default -> {
+                            errors.add(errorMessageByLine(idx, "Unknown synthetic instruction: " + name));
+                            instruction = new NoOpInstruction(
+                                    (variable != null ? variable : newVarStrict("y")),
+                                    lineLabel,
+                                    nn(args)
+                            );
+                        }
+                    }
+
                 }
 
-                attachLabelIfSupported(instruction, lineLabel);
-
+                //attachLabelIfSupported(instruction, lineLabel);
                 code.add(instruction);
             }
 
-            for (int idx = 0; idx < sInstructions.size(); idx++) {
-                SInstruction si = sInstructions.get(idx);
-                Map<String,String> argsMap = argumentsMap(si.getArguments());
-                String name = safe(si.getName(), "");
-                switch (name) {
-                    case "GOTO_LABEL" -> {
-                        String targetLabelName = argsMap.getOrDefault("gotoLabel", "");
-                        if (!targetLabelName.isBlank() && !targetLabelName.equals("EXIT") && !labelsByName.containsKey(targetLabelName)) {
-                            errors.add(errorMessageByLine(idx, "Unknown goto label: " + targetLabelName));
-                        }
-                    }
-                    case "JUMP_ZERO" -> {
-                        String targetLabelName = argsMap.getOrDefault("JZLabel", "");
-                        if (!targetLabelName.isBlank() && !targetLabelName.equals("EXIT") && !labelsByName.containsKey(targetLabelName)) {
-                            errors.add(errorMessageByLine(idx, "Unknown JZ label: " + targetLabelName));
-                        }
-                    }
-                    case "JUMP_EQUAL_CONSTANT" -> {
-                        String targetLabelName = argsMap.getOrDefault("JEConstantLabel", "");
-                        if (!targetLabelName.isBlank() && !targetLabelName.equals("EXIT") && !labelsByName.containsKey(targetLabelName)) {
-                            errors.add(errorMessageByLine(idx, "Unknown JEConstantLabel label: " + targetLabelName));
-                        }
-
-                        String constantValue = argsMap.get("constantValue");
-                        if (constantValue == null || constantValue.isBlank()) {
-                            errors.add(errorMessageByLine(idx, "Missing constantValue for JUMP_EQUAL_CONSTANT"));
-                        } else {
-                            try {
-                                Integer.parseInt(constantValue);
-                            } catch (NumberFormatException e) {
-                                errors.add(errorMessageByLine(idx, "Invalid constantValue: " + constantValue));
-                            }
-                        }
-                    }
-                    case "JUMP_EQUAL_VARIABLE" -> {
-                        String targetLabelName = argsMap.getOrDefault("JEVariableLabel", "");
-                        if (!targetLabelName.isBlank() && !targetLabelName.equals("EXIT") && !labelsByName.containsKey(targetLabelName)) {
-                            errors.add(errorMessageByLine(idx, "Unknown JEVariableLabel label: " + targetLabelName));
-                        }
-
-                        String cmpVariableName = argsMap.get("JEVariable");
-                        if (cmpVariableName == null || cmpVariableName.isBlank()) {
-                            errors.add(errorMessageByLine(idx, "Missing JEVariable for JUMP_EQUAL_VARIABLE"));
-                        } else {
-                            varsByName.computeIfAbsent(cmpVariableName, ProgramTranslator::newVarStrict);
-                        }
-                    }
-                    default -> {}
-                }
-            }
 
             ProgramImpl program = new ProgramImpl.Builder()
                     .withName(programName)
@@ -188,7 +277,64 @@ public final class ProgramTranslator {
             return new Result(program, errors);
         }
 
-        private static String safe(String s, String def) { return (s == null || s.isBlank()) ? def : s; }
+
+
+
+
+
+    private static Variable parseStrictVariable(String name) {
+
+        char c0 = Character.toLowerCase(name.charAt(0));
+        switch (c0) {
+            case 'y':
+                if (name.length() == 1) {
+                    return Variable.RESULT;
+                }
+
+            case 'x': {
+                int idx = parseStrictIndex(name, 1, name); // דורש ספרות בלבד אחרי X
+                return new VariableImpl(VariableType.INPUT, idx);
+            }
+
+            case 'z': {
+                int idx = parseStrictIndex(name, 1, name); // דורש ספרות בלבד אחרי Z
+                return new VariableImpl(VariableType.WORK, idx); // אם יש אצלך WORK/INTERMEDIATE – תעדכן כאן
+            }
+
+            default:
+                throw new IllegalArgumentException(
+                        "Unsupported variable '" + name + "'. Only xN, zN, or y are allowed");
+
+        }
+    }
+
+
+
+
+    private static int parseStrictIndex(String s, int start, String original) {
+        if (s.length() <= start) {
+            throw new IllegalArgumentException("Missing index for variable '" + original + "'");
+        }
+        int i = start;
+        while (i < s.length() && Character.isDigit(s.charAt(i))) i++;
+        if (i != s.length()) {
+            throw new IllegalArgumentException("Invalid characters after index in '" + original + "'");
+        }
+        try {
+            int idx = Integer.parseInt(s.substring(start, i));
+             if (idx < 1) throw new IllegalArgumentException("Index must be >= 1 in '" + original + "'");
+            return idx;
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid numeric index for variable '" + original + "'");
+        }
+    }
+
+
+
+
+
+
+    private static String safe(String s, String def) { return (s == null || s.isBlank()) ? def : s; }
 
         private static String trimToNull(String s) {
             return (s == null) ? null : (s.trim().isEmpty() ? null : s.trim());
@@ -208,8 +354,6 @@ public final class ProgramTranslator {
                             a -> safe(a.getValue(), "")
                     ));
         }
-
-
 
         private static Variable newVarStrict(String name) {
             if (name == null) {
@@ -251,62 +395,9 @@ public final class ProgramTranslator {
             } catch (ReflectiveOperationException ignored) {}
         }
 
-        public static final class SyntheticPlaceholder implements Instruction {
-            private final String name;
-            private final Variable variable;
-            private final Map<String,String> argsMap;
-            private Label label;
-
-            public SyntheticPlaceholder(String name, Variable variable, Map<String,String> argsMap) {
-                this.name = name;
-                this.variable = variable;
-                this.argsMap = Map.copyOf(argsMap);
-            }
-
-            @Override
-            public String getName() { return name; }
-
-            @Override
-            public Variable getVariable() { return variable; }
-
-            @Override
-            public Label execute(ExecutionContext context) {
-                throw new IllegalStateException(
-                        "Synthetic instruction '" + name + "' must be expanded before execution"
-                );
-            }
-
-
-            //get cycles??
-            @Override
-            public int cycles() {
-                return 1;
-            }
-
-            public boolean isBasic() { return false; }
-
-            public  int getCycles() { return 1; }
-            public Label getLabel() { return label; }
-            public void setLabel(Label label) { this.label = label; }
-
-            public String toDisplayString() {
-                return switch (name) {
-                    case "ASSIGNMENT" -> variable.getRepresentation() + " <- " + argsMap.getOrDefault("assignedVariable","?");
-                    case "ZERO_VARIABLE" -> variable.getRepresentation() + " <- 0";
-                    case "CONSTANT_ASSIGNMENT" -> variable.getRepresentation() + " <- " + argsMap.getOrDefault("constantValue","?");
-                    case "GOTO_LABEL" -> "GOTO " + argsMap.getOrDefault("gotoLabel","?");
-                    case "JUMP_ZERO" -> "JZ " + variable.getRepresentation() + " -> " + argsMap.getOrDefault("JZLabel","?");
-                    case "JUMP_EQUAL_CONSTANT" ->
-                            "JE " + variable.getRepresentation() + " == " + argsMap.getOrDefault("constantValue","?") +
-                                    " -> " + argsMap.getOrDefault("JEConstantLabel","?");
-                    case "JUMP_EQUAL_VARIABLE" ->
-                            "JE " + variable.getRepresentation() + " == " + argsMap.getOrDefault("JEVariable","?") +
-                                    " -> " + argsMap.getOrDefault("JEVariableLabel","?");
-                    default -> name + "(" + (variable != null ? variable.getRepresentation() : "") + ")";
-                };
-            }
-
-
-        }
-
+        private static Map<String, String> nn(Map<String, String> m) {
+        return (m == null) ? Map.of() : m;
     }
+
+
+}

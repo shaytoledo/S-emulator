@@ -7,22 +7,30 @@ import semulator.engine.logic.label.FixedLabel;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.variable.Variable;
 
+import java.util.Map;
+
 public class GoToInstruction extends AbstractInstruction {
 
-    private final Label goToLabel;
+    private final Label target;
 
-    public GoToInstruction(Variable variable, Label to) {
-        this(variable, to, FixedLabel.EMPTY);
+    public GoToInstruction(Variable var, Label target, Map<String,String> argsMap) {
+        super(InstructionData.GOTO_LABEL, var, argsMap);
+        this.target = target;
     }
 
-    public GoToInstruction(Variable variable, Label to, Label label) {
-        super(InstructionData.GOTO_LABEL, variable, label);
-        this.goToLabel = to;
+    public GoToInstruction(Variable var, Label target, Label lineLabel, Map<String,String> argsMap) {
+        super(InstructionData.GOTO_LABEL, var, lineLabel, argsMap);
+        this.target = target;
+    }
+
+    @Override
+    public Label execute(ExecutionContext context) {
+        return target;
     }
 
 
     @Override
-    public Label execute(ExecutionContext context) {
-        return goToLabel;
+    public String toDisplayString() {
+        return  "GOTO " + argsMap.getOrDefault("gotoLabel","?");
     }
 }

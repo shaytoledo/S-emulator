@@ -7,25 +7,35 @@ import semulator.engine.logic.label.FixedLabel;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.variable.Variable;
 
+import java.util.Map;
+
 public class AssignmentInstruction extends AbstractInstruction {
 
     Variable assignedVariable;
 
-    public AssignmentInstruction(Variable variable, Variable assignedVariable) {
-        this(variable, assignedVariable, FixedLabel.EMPTY);
+    public AssignmentInstruction(Variable target, Variable source, Map<String,String> argsMap) {
+        super(InstructionData.ASSIGNMENT, target, argsMap);
+        this.assignedVariable = source;
     }
 
-    public AssignmentInstruction(Variable variable, Variable assignedVariable, Label label) {
-        super(InstructionData.ASSIGNMENT, variable, label);
-        this.assignedVariable = assignedVariable;
+    public AssignmentInstruction(Variable target, Variable source, Label label, Map<String,String> argsMap) {
+        super(InstructionData.ASSIGNMENT, target, label, argsMap);
+        this.assignedVariable = source;
     }
-
 
 
     @Override
     public Label execute(ExecutionContext context) {
         long assignedValue = context.getVariableValue(assignedVariable);
         context.updateVariable(getVariable(), assignedValue);
-        return null;
+        return FixedLabel.EMPTY;
+    }
+
+
+    @Override
+    public String toDisplayString() {
+        //return getVariable().getRepresentation() + " <- " + argsMap.getOrDefault("assignedVariable","?");
+        return getVariable().getRepresentation() + " <- " + assignedVariable.getRepresentation();
+
     }
 }

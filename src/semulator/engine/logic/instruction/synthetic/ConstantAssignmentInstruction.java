@@ -7,22 +7,31 @@ import semulator.engine.logic.label.FixedLabel;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.variable.Variable;
 
+import java.util.Map;
+
 public class ConstantAssignmentInstruction extends AbstractInstruction {
 
-    final Long constant;
+    private final long constant;
 
-    public ConstantAssignmentInstruction(Variable variable, Long value) {
-        this(variable ,value, FixedLabel.EMPTY);
+    public ConstantAssignmentInstruction(Variable target, long constant, Map<String,String> argsMap) {
+        super(InstructionData.CONSTANT_ASSIGNMENT, target, argsMap);
+        this.constant = constant;
     }
 
-    public ConstantAssignmentInstruction(Variable variable, Long value, Label label) {
-        super(InstructionData.CONSTANT_ASSIGNMENT, variable, label);
-        this.constant = value;
+    public ConstantAssignmentInstruction(Variable target, long constant, Label label, Map<String,String> argsMap) {
+        super(InstructionData.CONSTANT_ASSIGNMENT, target, label, argsMap);
+        this.constant = constant;
     }
 
     @Override
     public Label execute(ExecutionContext context) {
         context.updateVariable(getVariable(), constant);
         return FixedLabel.EMPTY;
+    }
+
+
+    @Override
+    public String toDisplayString() {
+        return getVariable().getRepresentation() + " <- " + argsMap.getOrDefault("constantValue","?");
     }
 }

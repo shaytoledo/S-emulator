@@ -7,17 +7,20 @@ import semulator.engine.logic.label.FixedLabel;
 import semulator.engine.logic.label.Label;
 import semulator.engine.logic.variable.Variable;
 
-public class JunpZeroInstruction extends AbstractInstruction {
+import java.util.Map;
+
+public class JumpZeroInstruction extends AbstractInstruction {
 
     private final Label jnzLabel;
 
-    public JunpZeroInstruction(Variable variable, Label jnzLabel) {
-        this(variable, jnzLabel, FixedLabel.EMPTY);
+    public JumpZeroInstruction(Variable var, Label target, Map<String,String> argsMap) {
+        super(InstructionData.JUMP_ZERO, var, argsMap);
+        this.jnzLabel = target;
     }
 
-    public JunpZeroInstruction(Variable variable, Label jnzLabel, Label label) {
-        super(InstructionData.JUMP_ZERO, variable, label);
-        this.jnzLabel = jnzLabel;
+    public JumpZeroInstruction(Variable var, Label target, Label lineLabel, Map<String,String> argsMap) {
+        super(InstructionData.JUMP_ZERO, var, lineLabel, argsMap);
+        this.jnzLabel = target;
     }
 
     @Override
@@ -29,5 +32,11 @@ public class JunpZeroInstruction extends AbstractInstruction {
         }
         return FixedLabel.EMPTY;
 
+    }
+
+
+    @Override
+    public String toDisplayString() {
+        return  "JZ " + getVariable().getRepresentation() + " -> " + argsMap.getOrDefault("JZLabel","?");
     }
 }
